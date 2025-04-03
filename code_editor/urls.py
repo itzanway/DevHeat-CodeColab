@@ -9,4 +9,5 @@ urlpatterns = [
     path('join/', views.JoinRoomView.as_view(), name='join_room'),
     path('create/', views.CreateRoomView.as_view(), name='create_room'),
     path('room/<str:room_name>/', views.CodeRoomView.as_view(), name='code_room'),
+    path('update-interests/', views.update_interests, name='update_interests'),
 ]

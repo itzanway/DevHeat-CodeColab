@@ -7,7 +7,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.urls import reverse_lazy
-from .models import CodeRoom
+from .models import CodeRoom, Profile
 import random
 import string
 from django.contrib.auth import login
@@ -117,3 +117,13 @@ class CodeRoomView(TemplateView):
         context['room_name'] = room_name
         context['languages'] = ['python', 'java', 'cpp']
         return context
+
+## Interest view
+@login_required
+def update_interests(request):
+    if request.method == 'POST':
+        interests = request.POST.get('interests', '')
+        request.user.profile.interests = interests
+        request.user.profile.save()
+        return redirect('home')
+    return render(request, 'interests.html')
