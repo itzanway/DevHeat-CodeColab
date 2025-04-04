@@ -19,7 +19,6 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
 print("Installation successful!")
 
-@login_required
 def home_view(request):
     return render(request, "code_editor/home.html")
 
