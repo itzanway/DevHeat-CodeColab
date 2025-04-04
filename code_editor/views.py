@@ -12,9 +12,53 @@ import random
 import string
 from django.contrib.auth import login
 from django.utils.decorators import method_decorator
+from django.http import JsonResponse, HttpResponseForbidden
 
-class HomeView(TemplateView):
-    template_name = 'code_editor/home.html'
+# machine learning for room recommendation
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import KMeans
+print("Installation successful!")
+
+@login_required
+def home_view(request):
+    return render(request, "code_editor/home.html")
+
+@login_required
+def get_recommended_rooms(request):
+    if not request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return HttpResponseForbidden("Access Denied.")
+    user_profile = request.user.profile
+
+    # Get all profiles with interests
+    profiles = Profile.objects.exclude(interests="").exclude(user=request.user)
+    interests_list = [profile.interests for profile in profiles]
+
+    if not interests_list:
+        return JsonResponse({"rooms": []})
+
+    # Vectorize interests using TF-IDF
+    vectorizer = TfidfVectorizer()
+    interest_matrix = vectorizer.fit_transform([user_profile.interests] + interests_list)
+
+    # Apply KMeans clustering
+    num_clusters = min(len(profiles), 5)
+    kmeans = KMeans(n_clusters=num_clusters, random_state=42, n_init=10)
+    clusters = kmeans.fit_predict(interest_matrix)
+
+    # Find cluster of current user
+    user_cluster = clusters[0]
+    
+    # Find users in the same cluster
+    similar_users = [
+        profiles[i] for i in range(len(profiles)) if clusters[i + 1] == user_cluster
+    ]
+
+    # Get rooms created by similar users
+    recommended_rooms = CodeRoom.objects.filter(creator__profile__in=similar_users).distinct()[:5]
+
+    # Return rooms as JSON
+    rooms_data = [{"name": room.name, "creator": room.creator.username, "id": room.id} for room in recommended_rooms]
+    return JsonResponse({"rooms": rooms_data})
 
 '''
  $$$$$$\  $$\   $$\ $$$$$$$$\ $$\   $$\ 
@@ -118,12 +162,21 @@ class CodeRoomView(TemplateView):
         context['languages'] = ['python', 'java', 'cpp']
         return context
 
-## Interest view
+
+INTERESTS_CHOICES = {
+    "Programming Languages": ["Python", "C++", "Java", "JavaScript", "Go", "Rust"],
+    "Frameworks": ["Django", "Flask", "React", "Angular", "Vue", "FastAPI"],
+    "Tech Fields": ["Machine Learning", "Web Development", "Blockchain", "Cybersecurity"]
+}
+
 @login_required
 def update_interests(request):
-    if request.method == 'POST':
-        interests = request.POST.get('interests', '')
-        request.user.profile.interests = interests
-        request.user.profile.save()
-        return redirect('home')
-    return render(request, 'interests.html')
+    profile = request.user.profile
+
+    if request.method == "POST":
+        interests = request.POST.get("interests", "")
+        profile.interests = interests
+        profile.save()
+        return redirect("home")  # Redirect to homepage or profile page
+
+    return render(request, "interests.html", {"interests_choices": INTERESTS_CHOICES})
