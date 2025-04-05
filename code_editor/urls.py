@@ -1,13 +1,22 @@
 from django.urls import path
-from .views import *
+from . import views
 
 urlpatterns = [
-    path('', HomeView.as_view(), name='home'),
-    path('login/', CustomLoginView.as_view(), name='login'),
-    path('logout/', CustomLogoutView.as_view(), name='logout'),
-    path('register/', RegisterView.as_view(), name='register'),
-    path('join/', JoinRoomView.as_view(), name='join_room'),
-    path('create/', CreateRoomView.as_view(), name='create_room'),
-    path('room/<str:room_name>/', CodeRoomView.as_view(), name='code_room'),
-    path('update-interests/', update_interests, name='update_interests'),
+    # 🌐 Core Routes
+    path('', views.HomeView.as_view(), name='home'),
+    path('login/', views.CustomLoginView.as_view(), name='login'),
+    path('logout/', views.CustomLogoutView.as_view(), name='logout'),
+    path('register/', views.RegisterView.as_view(), name='register'),
+
+    # 🧑‍💻 Code Collaboration
+    path('join/', views.JoinRoomView.as_view(), name='join_room'),
+    path('create/', views.CreateRoomView.as_view(), name='create_room'),
+    path('room/<str:room_name>/', views.CodeRoomView.as_view(), name='code_room'),
+
+    # 🎯 Profile Interests
+    path('update-interests/', views.update_interests, name='update_interests'),
+
+    # 🤖 AI Code Assistant API
+    path('ai-autocomplete/', views.HuggingFaceAutocompleteView.as_view(), name='ai_autocomplete'),
+
 ]

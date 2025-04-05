@@ -1,3 +1,11 @@
+import os
+import json
+import random
+import string
+import requests
+
+from dotenv import load_dotenv
+from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
 from django.views.generic import TemplateView, RedirectView
@@ -5,29 +13,25 @@ from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import login
 from django.contrib import messages
 from django.urls import reverse_lazy
-from .models import CodeRoom, Profile
-import random
-import string
-from django.contrib.auth import login
 from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 
+from .models import CodeRoom, Profile
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
 
-'''
-$$$$$$$\                                                                                      $$\            $$\     $$\                     
-$$  __$$\                                                                                     $$ |           $$ |    \__|                    
-$$ |  $$ | $$$$$$\   $$$$$$$\  $$$$$$\  $$$$$$\$$$$\  $$$$$$\$$$$\   $$$$$$\  $$$$$$$\   $$$$$$$ | $$$$$$\ $$$$$$\   $$\  $$$$$$\  $$$$$$$\  
-$$$$$$$  |$$  __$$\ $$  _____|$$  __$$\ $$  _$$  _$$\ $$  _$$  _$$\ $$  __$$\ $$  __$$\ $$  __$$ | \____$$\\_$$  _|  $$ |$$  __$$\ $$  __$$\ 
-$$  __$$< $$$$$$$$ |$$ /      $$ /  $$ |$$ / $$ / $$ |$$ / $$ / $$ |$$$$$$$$ |$$ |  $$ |$$ /  $$ | $$$$$$$ | $$ |    $$ |$$ /  $$ |$$ |  $$ |
-$$ |  $$ |$$   ____|$$ |      $$ |  $$ |$$ | $$ | $$ |$$ | $$ | $$ |$$   ____|$$ |  $$ |$$ |  $$ |$$  __$$ | $$ |$$\ $$ |$$ |  $$ |$$ |  $$ |
-$$ |  $$ |\$$$$$$$\ \$$$$$$$\ \$$$$$$  |$$ | $$ | $$ |$$ | $$ | $$ |\$$$$$$$\ $$ |  $$ |\$$$$$$$ |\$$$$$$$ | \$$$$  |$$ |\$$$$$$  |$$ |  $$ |
-\__|  \__| \_______| \_______| \______/ \__| \__| \__|\__| \__| \__| \_______|\__|  \__| \_______| \_______|  \____/ \__| \______/ \__|  \__|                                                                                                                                
-'''
+# Load environment variables
+load_dotenv()
+HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
+
+# ----------------- Home & Auth Views -----------------
+
 class HomeView(LoginRequiredMixin, TemplateView):
     template_name = "code_editor/home.html"
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user_profile = self.request.user.profile
@@ -43,7 +47,6 @@ class HomeView(LoginRequiredMixin, TemplateView):
             num_clusters = min(len(profiles), 5)
             kmeans = KMeans(n_clusters=num_clusters, random_state=42, n_init=10)
             clusters = kmeans.fit_predict(interest_matrix)
-
             user_cluster = clusters[0]
 
             similar_users = [
@@ -54,16 +57,7 @@ class HomeView(LoginRequiredMixin, TemplateView):
 
         context['recommended_rooms'] = recommended_rooms
         return context
-'''
- $$$$$$\  $$\   $$\ $$$$$$$$\ $$\   $$\ 
-$$  __$$\ $$ |  $$ |\__$$  __|$$ |  $$ |
-$$ /  $$ |$$ |  $$ |   $$ |   $$ |  $$ |
-$$$$$$$$ |$$ |  $$ |   $$ |   $$$$$$$$ |
-$$  __$$ |$$ |  $$ |   $$ |   $$  __$$ |
-$$ |  $$ |$$ |  $$ |   $$ |   $$ |  $$ |
-$$ |  $$ |\$$$$$$  |   $$ |   $$ |  $$ |
-\__|  \__| \______/    \__|   \__|  \__|
-'''
+
 class RegisterView(View):
     def get(self, request):
         if request.user.is_authenticated:
@@ -104,22 +98,14 @@ class CustomLoginView(LoginView):
 
 class CustomLogoutView(LogoutView):
     next_page = reverse_lazy('home')
-    
+
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated:
             messages.info(request, 'You have been logged out.')
         return super().dispatch(request, *args, **kwargs)
 
-'''
-$$$$$$$\   $$$$$$\   $$$$$$\  $$\      $$\
-$$  __$$\ $$  __$$\ $$  __$$\ $$$\    $$$ |
-$$ |  $$ |$$ /  $$ |$$ /  $$ |$$$$\  $$$$ |
-$$$$$$$  |$$ |  $$ |$$ |  $$ |$$\$$\$$ $$ |
-$$  __$$< $$ |  $$ |$$ |  $$ |$$ \$$$  $$ |
-$$ |  $$ |$$ |  $$ |$$ |  $$ |$$ |\$  /$$ |
-$$ |  $$ | $$$$$$  | $$$$$$  |$$ | \_/ $$ |
-\__|  \__| \______/  \______/ \__|     \__|
-'''
+# ----------------- Room Collaboration Views -----------------
+
 @method_decorator(login_required(login_url=reverse_lazy('login')), name='dispatch')
 class CreateRoomView(RedirectView):
     def get_redirect_url(self, *args, **kwargs):
@@ -147,7 +133,7 @@ class JoinRoomView(View):
 @method_decorator(login_required(login_url=reverse_lazy('login')), name='dispatch')
 class CodeRoomView(TemplateView):
     template_name = 'code_editor/room.html'
-    
+
     def get_context_data(self, **kwargs):
         room_name = kwargs['room_name']
         room = get_object_or_404(CodeRoom, name=room_name)
@@ -156,38 +142,101 @@ class CodeRoomView(TemplateView):
         context['languages'] = ['python', 'java', 'cpp']
         return context
 
+# ----------------- Interests -----------------
 
 INTERESTS_CHOICES = {
     "Programming Languages": [
         "Python", "C++", "C", "Java", "JavaScript", "TypeScript", "Go", "Rust", "Ruby", "Swift", "Kotlin", "PHP", "R", "Scala"
     ],
-
     "Frameworks & Libraries": [
         "Django", "Flask", "FastAPI", "React", "Angular", "Vue", "Next.js", "Svelte", "Spring Boot", 
         "Express.js", "NestJS", "Bootstrap", "Tailwind CSS", "jQuery"
     ],
-
     "Tech Fields": [
         "Machine Learning", "Deep Learning", "Data Science", "Web Development", "App Development",
         "Blockchain", "Cybersecurity", "DevOps", "Cloud Computing", "Game Development", 
         "Embedded Systems", "AR/VR", "IoT", "AI/ML Ops"
     ],
-
     "Databases & Tools": [
         "MySQL", "PostgreSQL", "MongoDB", "Redis", "SQLite", "Firebase", "Docker", "Kubernetes", 
         "Git", "GitHub", "CI/CD", "AWS", "Azure", "GCP"
     ]
 }
 
-
 @login_required
 def update_interests(request):
     profile = request.user.profile
-
     if request.method == "POST":
         interests = request.POST.get("interests", "")
         profile.interests = interests
         profile.save()
-        return redirect("home")  # Redirect to homepage or profile page
-
+        return redirect("home")
     return render(request, "interests.html", {"interests_choices": INTERESTS_CHOICES})
+
+# ----------------- Hugging Face AI Code Assistant -----------------
+
+@method_decorator(csrf_exempt, name='dispatch')
+class HuggingFaceAutocompleteView(View):
+    def post(self, request, *args, **kwargs):
+        try:
+            # Ensure request body exists
+            if not request.body:
+                return JsonResponse({"error": "Empty request body"}, status=400)
+
+            # Attempt to parse JSON
+            try:
+                data = json.loads(request.body)
+            except json.JSONDecodeError:
+                return JsonResponse({"error": "Invalid JSON format"}, status=400)
+
+            # Extract code and language
+            code = data.get("code", "").strip()
+            language = data.get("language", "code").strip()
+
+            if not code:
+                return JsonResponse({"error": "Code field is required"}, status=400)
+
+            # Construct the prompt using language
+            prompt = f"Complete the following {language} code:\n{code}"
+
+            headers = {
+                "Authorization": f"Bearer {HUGGINGFACE_API_KEY}",
+                "Content-Type": "application/json"
+            }
+
+            payload = {
+                "inputs": prompt,
+                "parameters": {
+                    "max_new_tokens": 64,
+                    "return_full_text": False
+                }
+            }
+
+            response = requests.post(
+                "https://api-inference.huggingface.co/models/Salesforce/codegen-350M-mono",
+                headers=headers,
+                json=payload
+            )
+
+            try:
+                result = response.json()
+            except ValueError:
+                return JsonResponse({"error": "Invalid response from Hugging Face API"}, status=500)
+
+            # Handle response errors
+            if response.status_code != 200:
+                return JsonResponse({
+                    "error": "Hugging Face API returned an error",
+                    "status_code": response.status_code,
+                    "details": result
+                }, status=500)
+
+            # Extract generated text
+            if isinstance(result, list) and result:
+                generated_text = result[0].get("generated_text", "")
+                return JsonResponse({"suggestion": generated_text}, status=200)
+            else:
+                return JsonResponse({"error": "Unexpected response format", "details": result}, status=500)
+
+        except Exception as e:
+            return JsonResponse({"error": "Internal server error", "details": str(e)}, status=500)
