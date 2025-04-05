@@ -16,7 +16,6 @@ from django.utils.decorators import method_decorator
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
 
-<<<<<<< HEAD
 '''
 $$$$$$$\                                                                                      $$\            $$\     $$\                     
 $$  __$$\                                                                                     $$ |           $$ |    \__|                    
@@ -29,11 +28,6 @@ $$ |  $$ |\$$$$$$$\ \$$$$$$$\ \$$$$$$  |$$ | $$ | $$ |$$ | $$ | $$ |\$$$$$$$\ $$
 '''
 class HomeView(LoginRequiredMixin, TemplateView):
     template_name = "code_editor/home.html"
-=======
-def home_view(request):
-    return render(request, "code_editor/home.html")
->>>>>>> 04beb3fb4c7a8888cbfa4d6caad876f44bde702b
-
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user_profile = self.request.user.profile
