@@ -50,6 +50,7 @@ You can view or download the file from the link: [Video](https://drive.google.co
   2. **Install Requirements**:
        ```bash
        pip install -r requirements.txt
+       pip install python-dotenv requests
        ```
   
 ### 🌐 Set Up Environment Variables
@@ -59,6 +60,7 @@ You can view or download the file from the link: [Video](https://drive.google.co
   SECRET_KEY=your-secret-key
   DEBUG=True
   ALLOWED_HOSTS=127.0.0.1,localhost
+  HUGGINGFACE_API_KEY=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
   ```
   
   ### 🛠️ Run Migrations
@@ -87,6 +89,7 @@ Ensure the `.env` file is present with the following content:
 SECRET_KEY=your-secret-key
 DEBUG=True
 ALLOWED_HOSTS=127.0.0.1,localhost
+HUGGINGFACE_API_KEY=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
 ```
 
 ### 🐳 Use Docker Compose
