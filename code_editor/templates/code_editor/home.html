@@ -11,17 +11,27 @@
         </div>
 
         <hr>
-
-        <!-- Button to fetch recommendations -->
+        {% comment %} recommendations {% endcomment %}
         <div class="mt-5">
             <h3>Find Rooms Based on Your Interests</h3>
             <button id="recommend-btn" class="btn btn-info mt-2">Get Recommended Rooms</button>
         </div>
 
-        <!-- Section to show recommended rooms -->
         <div id="recommended-section" class="mt-4" style="display: none;">
             <h4>Recommended Rooms</h4>
-            <ul id="recommended-rooms" class="list-group mt-2"></ul>
+            <ul id="recommended-rooms" class="list-group mt-2">
+                {% if recommended_rooms %}
+                    {% for room in recommended_rooms %}
+                        <li class="list-group-item">
+                            <strong>{{ room.name }}</strong> - Created by {{ room.creator.username }}
+                        </li>
+                    {% empty %}
+                        <li class="list-group-item text-muted">No recommendations found based on your interests.</li>
+                    {% endfor %}
+                {% else %}
+                    <li class="list-group-item text-muted">No recommendations available. Try updating your interests.</li>
+                {% endif %}
+            </ul>
         </div>
 
     {% else %}
@@ -36,26 +46,7 @@
 
 <script>
     document.getElementById("recommend-btn").addEventListener("click", function() {
-        fetch("{% url 'get_recommended_rooms' %}")
-            .then(response => response.json())
-            .then(data => {
-                const section = document.getElementById("recommended-section");
-                const roomsList = document.getElementById("recommended-rooms");
-                section.style.display = "block";
-                roomsList.innerHTML = "";
-
-                if (data.rooms.length === 0) {
-                    roomsList.innerHTML = "<li class='list-group-item text-danger'>No recommendations found.</li>";
-                } else {
-                    data.rooms.forEach(room => {
-                        roomsList.innerHTML += `
-                            <li class="list-group-item">
-                                <strong>${room.name}</strong> - Created by ${room.creator}
-                            </li>
-                        `;
-                    });
-                }
-            });
+        document.getElementById("recommended-section").style.display = "block";
     });
 </script>
 {% endblock %}

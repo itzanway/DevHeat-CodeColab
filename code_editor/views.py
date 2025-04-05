@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
-from django.views.generic import TemplateView, FormView, RedirectView
+from django.views.generic import TemplateView, RedirectView
 from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -12,54 +12,49 @@ import random
 import string
 from django.contrib.auth import login
 from django.utils.decorators import method_decorator
-from django.http import JsonResponse, HttpResponseForbidden
 
-# machine learning for room recommendation
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
-print("Installation successful!")
 
-@login_required
-def home_view(request):
-    return render(request, "code_editor/home.html")
+'''
+$$$$$$$\                                                                                      $$\            $$\     $$\                     
+$$  __$$\                                                                                     $$ |           $$ |    \__|                    
+$$ |  $$ | $$$$$$\   $$$$$$$\  $$$$$$\  $$$$$$\$$$$\  $$$$$$\$$$$\   $$$$$$\  $$$$$$$\   $$$$$$$ | $$$$$$\ $$$$$$\   $$\  $$$$$$\  $$$$$$$\  
+$$$$$$$  |$$  __$$\ $$  _____|$$  __$$\ $$  _$$  _$$\ $$  _$$  _$$\ $$  __$$\ $$  __$$\ $$  __$$ | \____$$\\_$$  _|  $$ |$$  __$$\ $$  __$$\ 
+$$  __$$< $$$$$$$$ |$$ /      $$ /  $$ |$$ / $$ / $$ |$$ / $$ / $$ |$$$$$$$$ |$$ |  $$ |$$ /  $$ | $$$$$$$ | $$ |    $$ |$$ /  $$ |$$ |  $$ |
+$$ |  $$ |$$   ____|$$ |      $$ |  $$ |$$ | $$ | $$ |$$ | $$ | $$ |$$   ____|$$ |  $$ |$$ |  $$ |$$  __$$ | $$ |$$\ $$ |$$ |  $$ |$$ |  $$ |
+$$ |  $$ |\$$$$$$$\ \$$$$$$$\ \$$$$$$  |$$ | $$ | $$ |$$ | $$ | $$ |\$$$$$$$\ $$ |  $$ |\$$$$$$$ |\$$$$$$$ | \$$$$  |$$ |\$$$$$$  |$$ |  $$ |
+\__|  \__| \_______| \_______| \______/ \__| \__| \__|\__| \__| \__| \_______|\__|  \__| \_______| \_______|  \____/ \__| \______/ \__|  \__|                                                                                                                                
+'''
+class HomeView(LoginRequiredMixin, TemplateView):
+    template_name = "code_editor/home.html"
 
-@login_required
-def get_recommended_rooms(request):
-    if not request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        return HttpResponseForbidden("Access Denied.")
-    user_profile = request.user.profile
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user_profile = self.request.user.profile
 
-    # Get all profiles with interests
-    profiles = Profile.objects.exclude(interests="").exclude(user=request.user)
-    interests_list = [profile.interests for profile in profiles]
+        profiles = Profile.objects.exclude(interests="").exclude(user=self.request.user)
+        interests_list = [profile.interests for profile in profiles]
 
-    if not interests_list:
-        return JsonResponse({"rooms": []})
+        recommended_rooms = []
+        if interests_list:
+            vectorizer = TfidfVectorizer()
+            interest_matrix = vectorizer.fit_transform([user_profile.interests] + interests_list)
 
-    # Vectorize interests using TF-IDF
-    vectorizer = TfidfVectorizer()
-    interest_matrix = vectorizer.fit_transform([user_profile.interests] + interests_list)
+            num_clusters = min(len(profiles), 5)
+            kmeans = KMeans(n_clusters=num_clusters, random_state=42, n_init=10)
+            clusters = kmeans.fit_predict(interest_matrix)
 
-    # Apply KMeans clustering
-    num_clusters = min(len(profiles), 5)
-    kmeans = KMeans(n_clusters=num_clusters, random_state=42, n_init=10)
-    clusters = kmeans.fit_predict(interest_matrix)
+            user_cluster = clusters[0]
 
-    # Find cluster of current user
-    user_cluster = clusters[0]
-    
-    # Find users in the same cluster
-    similar_users = [
-        profiles[i] for i in range(len(profiles)) if clusters[i + 1] == user_cluster
-    ]
+            similar_users = [
+                profiles[i] for i in range(len(profiles)) if clusters[i + 1] == user_cluster
+            ]
 
-    # Get rooms created by similar users
-    recommended_rooms = CodeRoom.objects.filter(creator__profile__in=similar_users).distinct()[:5]
+            recommended_rooms = CodeRoom.objects.filter(creator__profile__in=similar_users).distinct()[:5]
 
-    # Return rooms as JSON
-    rooms_data = [{"name": room.name, "creator": room.creator.username, "id": room.id} for room in recommended_rooms]
-    return JsonResponse({"rooms": rooms_data})
-
+        context['recommended_rooms'] = recommended_rooms
+        return context
 '''
  $$$$$$\  $$\   $$\ $$$$$$$$\ $$\   $$\ 
 $$  __$$\ $$ |  $$ |\__$$  __|$$ |  $$ |
@@ -117,7 +112,7 @@ class CustomLogoutView(LogoutView):
         return super().dispatch(request, *args, **kwargs)
 
 '''
-$$$$$$$\   $$$$$$\   $$$$$$\  $$\      $$\ 
+$$$$$$$\   $$$$$$\   $$$$$$\  $$\      $$\
 $$  __$$\ $$  __$$\ $$  __$$\ $$$\    $$$ |
 $$ |  $$ |$$ /  $$ |$$ /  $$ |$$$$\  $$$$ |
 $$$$$$$  |$$ |  $$ |$$ |  $$ |$$\$$\$$ $$ |
@@ -164,10 +159,27 @@ class CodeRoomView(TemplateView):
 
 
 INTERESTS_CHOICES = {
-    "Programming Languages": ["Python", "C++", "Java", "JavaScript", "Go", "Rust"],
-    "Frameworks": ["Django", "Flask", "React", "Angular", "Vue", "FastAPI"],
-    "Tech Fields": ["Machine Learning", "Web Development", "Blockchain", "Cybersecurity"]
+    "Programming Languages": [
+        "Python", "C++", "C", "Java", "JavaScript", "TypeScript", "Go", "Rust", "Ruby", "Swift", "Kotlin", "PHP", "R", "Scala"
+    ],
+
+    "Frameworks & Libraries": [
+        "Django", "Flask", "FastAPI", "React", "Angular", "Vue", "Next.js", "Svelte", "Spring Boot", 
+        "Express.js", "NestJS", "Bootstrap", "Tailwind CSS", "jQuery"
+    ],
+
+    "Tech Fields": [
+        "Machine Learning", "Deep Learning", "Data Science", "Web Development", "App Development",
+        "Blockchain", "Cybersecurity", "DevOps", "Cloud Computing", "Game Development", 
+        "Embedded Systems", "AR/VR", "IoT", "AI/ML Ops"
+    ],
+
+    "Databases & Tools": [
+        "MySQL", "PostgreSQL", "MongoDB", "Redis", "SQLite", "Firebase", "Docker", "Kubernetes", 
+        "Git", "GitHub", "CI/CD", "AWS", "Azure", "GCP"
+    ]
 }
+
 
 @login_required
 def update_interests(request):
