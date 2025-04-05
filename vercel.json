@@ -3,6 +3,8 @@
     "builds": [
       {
         "src": "collaborative_code_editor/wsgi.py",
+        "buildCommand": "./build_files.sh",
+        "outputDirectory": "staticfiles_build",
         "use": "@vercel/python",
         "config": { "maxLambdaSize": "15mb", "runtime": "python3.9" }
       },
