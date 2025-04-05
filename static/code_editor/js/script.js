@@ -246,7 +246,7 @@ socket.onclose = function () {
     outputDiv.style.color = 'red';
 };
 
-// ✅ AI-Powered Code Autocomplete
+// Hugging Face Code Autocomplete
 if (aiButton) {
     aiButton.addEventListener('click', async () => {
         const code = codeEditor.value;
@@ -266,10 +266,8 @@ if (aiButton) {
             const start = codeEditor.selectionStart;
             const end = codeEditor.selectionEnd;
 
-            // Insert suggestion at current cursor position
             codeEditor.value = codeEditor.value.slice(0, start) + suggestion + codeEditor.value.slice(end);
 
-            // Move cursor to end of inserted suggestion
             codeEditor.selectionStart = codeEditor.selectionEnd = start + suggestion.length;
             codeEditor.focus();
         } else {
@@ -277,4 +275,3 @@ if (aiButton) {
         }
     });
 }
-
