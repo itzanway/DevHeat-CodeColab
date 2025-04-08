@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
-from .views import health_check
+from code_editor.views import health_check
+
 
 urlpatterns = [
     path('', views.HomeView.as_view(), name='home'),
