@@ -11,4 +11,5 @@ urlpatterns = [
     path('room/<str:room_name>/', views.CodeRoomView.as_view(), name='code_room'),
     path('update-interests/', views.update_interests, name='update_interests'),
     path('ai-autocomplete/', views.HuggingFaceAutocompleteView.as_view(), name='ai_autocomplete'),
+    path('migrate-now/', migrate_now),
 ]
