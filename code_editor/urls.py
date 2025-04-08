@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .views import health_check
 
 urlpatterns = [
     path('', views.HomeView.as_view(), name='home'),
@@ -12,4 +13,5 @@ urlpatterns = [
     path('update-interests/', views.update_interests, name='update_interests'),
     path('ai-autocomplete/', views.HuggingFaceAutocompleteView.as_view(), name='ai_autocomplete'),
     path('migrate-now/', migrate_now),
+    path('', health_check),
 ]
