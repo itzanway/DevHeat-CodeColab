@@ -20,8 +20,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
 from .models import CodeRoom, Profile
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.cluster import KMeans
+from .utils import *
 
 # Load environment variables
 load_dotenv()
@@ -37,23 +36,12 @@ class HomeView(LoginRequiredMixin, TemplateView):
         user_profile = self.request.user.profile
 
         profiles = Profile.objects.exclude(interests="").exclude(user=self.request.user)
-        interests_list = [profile.interests for profile in profiles]
-
+        
         recommended_rooms = []
-        if interests_list:
-            vectorizer = TfidfVectorizer()
-            interest_matrix = vectorizer.fit_transform([user_profile.interests] + interests_list)
-
-            num_clusters = min(len(profiles), 5)
-            kmeans = KMeans(n_clusters=num_clusters, random_state=42, n_init=10)
-            clusters = kmeans.fit_predict(interest_matrix)
-            user_cluster = clusters[0]
-
-            similar_users = [
-                profiles[i] for i in range(len(profiles)) if clusters[i + 1] == user_cluster
-            ]
-
-            recommended_rooms = CodeRoom.objects.filter(creator__profile__in=similar_users).distinct()[:5]
+        if profiles:
+            similar_profiles = find_similar_profiles(user_profile, list(profiles), max_clusters=5)
+            
+            recommended_rooms = CodeRoom.objects.filter(creator__profile__in=similar_profiles).distinct()[:5]
 
         context['recommended_rooms'] = recommended_rooms
         return context
