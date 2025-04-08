@@ -13,6 +13,7 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = [
     '.vercel.app',
     'now.sh',
+    '.railway.app',
     '127.0.0.1',
     'localhost',
     'devheat-codecolab.onrender.com',
