@@ -1,5 +1,5 @@
 channels==4.2.0
-Django==5.2
+Django==4.2.20
 python-dotenv==1.1.0
 Requests==2.32.3
 scikit_learn==1.6.1
