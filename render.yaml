@@ -19,5 +19,16 @@ services:
         value: devheat-codecolab.onrender.com
       - key: DATABASE_URL
         value: sqlite:///db.sqlite3
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: codecolab-redis
+          property: connectionString
     healthCheckPath: /
     autoDeploy: true
+
+  - type: redis
+    name: codecolab-redis
+    plan: free
+    maxmemoryPolicy: noeviction
+    ipAllowList: []

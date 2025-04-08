@@ -68,9 +68,12 @@ WSGI_APPLICATION = 'collaborative_code_editor.wsgi.application'
 ASGI_APPLICATION = 'collaborative_code_editor.asgi.application'
 
 CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer'
-    }
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [os.environ.get('REDIS_URL', 'redis://localhost:6379')],
+        },
+    },
 }
 
 DATABASES = {
