@@ -2,8 +2,40 @@ services:
   - type: web
     name: devheat-codecolab
     env: python
+    plan: free
     buildCommand: |
+      python -m pip install --upgrade pip
       pip install -r requirements.txt
-      python manage.py migrate --noinput
       python manage.py collectstatic --noinput
-    startCommand: gunicorn collaborative_code_editor.wsgi
+      python manage.py migrate --noinput
+    startCommand: daphne -b 0.0.0.0 -p $PORT collaborative_code_editor.asgi:application
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DEBUG
+        value: False
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DJANGO_ALLOWED_HOSTS
+        value: devheat-codecolab.onrender.com
+      - key: DATABASE_URL
+        value: sqlite:///db.sqlite3
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: codecolab-redis
+          property: connectionString
+      - key: PORT
+        value: 10000
+    healthCheckPath: /
+    autoDeploy: true
+    disk:
+      name: codecolab-disk
+      mountPath: /opt/render/project/src
+      sizeGB: 1
+
+  - type: redis
+    name: codecolab-redis
+    plan: free
+    maxmemoryPolicy: noeviction
+    ipAllowList: []

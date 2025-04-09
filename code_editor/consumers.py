@@ -5,25 +5,56 @@ import os
 from datetime import datetime
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
+import logging
+
+logger = logging.getLogger(__name__)
 
 class CodeEditorConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.room_name = self.scope['url_route']['kwargs']['room_name']
-        self.room_group_name = f'code_{self.room_name}'
-        self.user = self.scope["user"]
+        try:
+            self.room_name = self.scope['url_route']['kwargs']['room_name']
+            self.room_group_name = f'code_{self.room_name}'
+            self.user = self.scope["user"]
 
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
-        await self.accept()
+            # Join room group
+            await self.channel_layer.group_add(
+                self.room_group_name,
+                self.channel_name
+            )
+            await self.accept()
+            
+            # Notify others about the new user
+            username = self.user.username if self.user.is_authenticated else 'Anonymous'
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'user_join',
+                    'username': username
+                }
+            )
+        except Exception as e:
+            logger.error(f"WebSocket connection error: {str(e)}")
+            await self.close()
 
     async def disconnect(self, close_code):
-        # Leave room group
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
+        try:
+            # Notify others about the user leaving
+            username = self.user.username if self.user.is_authenticated else 'Anonymous'
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'user_leave',
+                    'username': username
+                }
+            )
+            
+            # Leave room group
+            await self.channel_layer.group_discard(
+                self.room_group_name,
+                self.channel_name
+            )
+        except Exception as e:
+            logger.error(f"WebSocket disconnect error: {str(e)}")
 
     async def receive(self, text_data):
         data = json.loads(text_data)
